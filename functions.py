@@ -1,4 +1,5 @@
 import numpy as np
+from torchvision import datasets
 
 
 def relu(x):
@@ -51,24 +52,40 @@ def one_hot_encoder(label):
     return one_hot_vector.reshape(1, -1)  # Reshape to 1 row and 10 columns
 
 
-def cross_entropy_loss(output, one_hot_label):
+def mean_squared_error(y_true, y_pred):
     """
-    Calculate the cross-entropy loss between the network output and the one-hot encoded label.
+    Calculates the Mean Squared Error (MSE) loss.
 
     Parameters:
-    - output: The output of the forward pass (probabilities from softmax).
-    - one_hot_label: The one-hot encoded label (a column vector).
+        y_true (numpy.ndarray): Array of true values (targets).
+        y_pred (numpy.ndarray): Array of predicted values.
 
     Returns:
-    - The cross-entropy loss (scalar value).
+        float: The MSE loss.
     """
-    # Ensure output and one_hot_label have the same shape
-    if output.shape != one_hot_label.shape:
-        raise ValueError("Output and one-hot encoded label must have the same shape.")
+    # Ensure inputs are NumPy arrays
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
 
-    # Apply the cross-entropy loss formula
-    loss = -np.sum(
-        one_hot_label * np.log(output + 1e-9)
-    )  # Added epsilon to avoid log(0)
+    # Calculate the squared differences
+    squared_errors = (y_true - y_pred) ** 2
 
-    return loss
+    # Return the mean of squared errors
+    return np.mean(squared_errors)
+
+
+def load_mnist():
+    # Download and load the MNIST training dataset
+    train_dataset = datasets.MNIST(
+        root="./data",  # Directory to save the dataset
+        train=True,  # Load training data
+        transform=None,  # No transformations, keep raw PIL images
+        download=True,  # Download the dataset if not already available
+    )
+
+    # Similarly, load the test dataset
+    test_dataset = datasets.MNIST(
+        root="./data", train=False, transform=None, download=True  # Load test data
+    )
+
+    return train_dataset, test_dataset
