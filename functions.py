@@ -1,5 +1,6 @@
 import numpy as np
 from torchvision import datasets
+from torchvision import transforms
 
 
 def relu(x):
@@ -75,17 +76,25 @@ def mean_squared_error(y_true, y_pred):
 
 
 def load_mnist():
-    # Download and load the MNIST training dataset
+    # Define the transformation to convert PIL images to tensors
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),  # Convert PIL image to tensor
+            transforms.Normalize((0.5,), (0.5,)),  # Optional: normalize the data
+        ]
+    )
+
+    # Download and load the MNIST training dataset with the transformation
     train_dataset = datasets.MNIST(
         root="./data",  # Directory to save the dataset
         train=True,  # Load training data
-        transform=None,  # No transformations, keep raw PIL images
+        transform=transform,  # Apply transformation
         download=True,  # Download the dataset if not already available
     )
 
     # Similarly, load the test dataset
     test_dataset = datasets.MNIST(
-        root="./data", train=False, transform=None, download=True  # Load test data
+        root="./data", train=False, transform=transform, download=True  # Load test data
     )
 
     return train_dataset, test_dataset

@@ -1,100 +1,127 @@
 import numpy as np
-from functions import relu, sigmoid, softmax
+from functions import *
 
 
 class MLP:
     def __init__(
         self,
-        activation_function,
         input_size=784,
         hidden_layer_sizes=[16, 16],
         output_size=10,
+        activation_function="relu",
+        learning_rate=0.01,
     ):
         """
-        Initialize the MLP with given layer sizes.
+        Initialize the Multi-Layer Perceptron (MLP) with specified architecture.
 
         Parameters:
-        - activation_function: String representing the activation function ("relu", "sigmoid").
-        - input_size: Number of input neurons.
-        - hidden_layer_sizes: List of integers representing the size of each hidden layer.
-        - output_size: Number of output neurons.
+        - input_size: Number of input neurons
+        - hidden_layer_sizes: List of integers specifying the size of each hidden layer
+        - output_size: Number of output neurons
+        - activation_function: Activation function to use ('relu' or 'sigmoid')
+        - learning_rate: Learning rate for gradient descent
         """
         self.input_size = input_size
         self.hidden_layer_sizes = hidden_layer_sizes
         self.output_size = output_size
-        self.activation_function = activation_function
+        self.learning_rate = learning_rate
 
-        # Define the structure of the network
-        self.layers = [input_size] + hidden_layer_sizes + [output_size]
-
-        # Initialize weights and biases as NumPy arrays
+        # Initialize weights and biases
         self.weights = []
         self.biases = []
-        self._initialize_weights_and_biases()
+        self.a = []  # Store activations
+        self.z = []  # Store linear transformations
+        layer_sizes = [input_size] + hidden_layer_sizes + [output_size]
 
-    def _initialize_weights_and_biases(self):
-        """
-        Initialize weights and biases for each layer using Xavier initialization.
-        Weights are scaled by sqrt(2 / (fan_in + fan_out)), and biases are set to zero.
-        """
-        for i in range(len(self.layers) - 1):
-            fan_in = self.layers[i]  # Number of input neurons
-            fan_out = self.layers[i + 1]  # Number of output neurons
-            # Xavier initialization for weights
-            weight = np.random.randn(fan_in, fan_out) * np.sqrt(2 / (fan_in + fan_out))
-            # Initialize biases to zero
-            bias = np.zeros((1, fan_out))
-            self.weights.append(weight)
-            self.biases.append(bias)
+        for i in range(len(layer_sizes) - 1):
+            self.weights.append(
+                np.random.randn(layer_sizes[i], layer_sizes[i + 1]) * 0.01
+            )
+            self.biases.append(np.zeros((1, layer_sizes[i + 1])))
 
-    def _apply_activation(self, z):
-        """
-        Apply the activation function based on the specified type.
-
-        Parameters:
-        - z: Pre-activation value (numpy array).
-
-        Returns:
-        - Post-activation value (numpy array).
-        """
-        if self.activation_function == "relu":
-            return relu(z)
-        elif self.activation_function == "sigmoid":
-            return sigmoid(z)
+        # Set activation function and its derivative
+        if activation_function == "relu":
+            self.activation = relu
+            self.activation_derivative = relu_derivative
+        elif activation_function == "sigmoid":
+            self.activation = sigmoid
+            self.activation_derivative = sigmoid_derivative
         else:
             raise ValueError(
-                "Unsupported activation function. Use 'relu' or 'sigmoid'."
+                "Unsupported activation function. Choose 'relu' or 'sigmoid'."
             )
 
     def forward(self, x):
         """
-        Perform a forward pass through the network.
+        Perform forward propagation through the network.
 
         Parameters:
-        - x: Input data (numpy array).
+        - x: Input data (numpy array)
 
         Returns:
-        - Activations of the output layer (numpy array).
+        - Output of the network
         """
-        activations = x
-        for i in range(len(self.weights) - 1):  # Loop through hidden layers
-            activations = self._apply_activation(
-                np.dot(activations, self.weights[i]) + self.biases[i]
-            )
 
-        # Output layer (softmax activation)
-        output = softmax(np.dot(activations, self.weights[-1]) + self.biases[-1])
+        current_activation = x
+        self.a.append(current_activation)  # Input layer activation
+
+        for i in range(len(self.weights) - 1):  # For all layers except the output layer
+            z = np.dot(current_activation, self.weights[i]) + self.biases[i]
+            current_activation = self.activation(z)
+            self.z.append(z)
+            self.a.append(current_activation)
+
+        # Output layer with softmax activation
+        z = np.dot(current_activation, self.weights[-1]) + self.biases[-1]
+        self.z.append(z)
+        output = softmax(z)
+        self.a.append(output)
+
         return output
 
-    def back_propagation(self, x, labels):
+    def back_propagation(self, x, y):
         """
-        Perform backpropagation to compute gradients for weights and biases.
+        Perform backpropagation and compute gradients.
 
         Parameters:
-        - x: Input data (numpy array of shape [n_samples, n_features]).
-        - y: True labels (one-hot encoded numpy array of shape [n_samples, n_classes]).
+        - x: Input data (numpy array)
+        - y: True labels (numpy array)
 
         Returns:
-        - gradients_w: List of gradients for weights (same structure as self.weights).
-        - gradients_b: List of gradients for biases (same structure as self.biases).
+        - Gradients for weights and biases
         """
+        m = x.shape[0]  # Number of samples
+        gradients_w = [np.zeros_like(w) for w in self.weights]
+        gradients_b = [np.zeros_like(b) for b in self.biases]
+
+        # Perform forward propagation
+        self.forward(x)
+
+        # Compute output layer error (MSE derivative)
+        delta = (
+            (self.a[-1] - y) * self.a[-1] * (1 - self.a[-1])
+        )  # Output layer derivative
+        gradients_w[-1] = np.dot(self.a[-2].T, delta) / m
+        gradients_b[-1] = np.sum(delta, axis=0, keepdims=True) / m
+
+        # Backpropagate through hidden layers
+        for l in range(len(self.weights) - 2, -1, -1):
+            delta = np.dot(delta, self.weights[l + 1].T) * self.activation_derivative(
+                self.z[l]
+            )
+            gradients_w[l] = np.dot(self.a[l].T, delta) / m
+            gradients_b[l] = np.sum(delta, axis=0, keepdims=True) / m
+
+        return gradients_w, gradients_b
+
+    def update_weights(self, gradients_w, gradients_b):
+        """
+        Update weights and biases using the computed gradients.
+
+        Parameters:
+        - gradients_w: Gradients for weights
+        - gradients_b: Gradients for biases
+        """
+        for i in range(len(self.weights)):
+            self.weights[i] -= self.learning_rate * gradients_w[i]
+            self.biases[i] -= self.learning_rate * gradients_b[i]
