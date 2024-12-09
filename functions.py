@@ -24,8 +24,11 @@ def sigmoid_derivative(x):
     return sigmoid_x * (1 - sigmoid_x)
 
 
-def softmax(array: np.ndarray) -> np.ndarray:
-    return np.exp(array) / np.sum(np.exp(array))
+def softmax(x):
+    # x shape: (batch_size, output_size)
+    shifted = x - np.max(x, axis=1, keepdims=True)  # Numeric stability
+    exps = np.exp(shifted)
+    return exps / np.sum(exps, axis=1, keepdims=True)
 
 
 def process_image(img):
@@ -98,3 +101,11 @@ def load_mnist():
     )
 
     return train_dataset, test_dataset
+
+
+def cross_entropy_loss(y_true, y_pred):
+    # y_true and y_pred are shape (batch_size, number_of_classes)
+    # Avoid log(0) with a small epsilon
+    epsilon = 1e-9
+    y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+    return -np.mean(np.sum(y_true * np.log(y_pred), axis=1))

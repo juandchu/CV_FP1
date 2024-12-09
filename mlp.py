@@ -29,8 +29,6 @@ class MLP:
         # Initialize weights and biases
         self.weights = []
         self.biases = []
-        self.a = []  # Store activations
-        self.z = []  # Store linear transformations
         layer_sizes = [input_size] + hidden_layer_sizes + [output_size]
 
         for i in range(len(layer_sizes) - 1):
@@ -61,6 +59,10 @@ class MLP:
         Returns:
         - Output of the network
         """
+
+        # Reset activations and linear transformations for each new forward pass
+        self.a = []  # Store activations
+        self.z = []  # Store linear transformations
 
         current_activation = x
         self.a.append(current_activation)  # Input layer activation
@@ -97,10 +99,8 @@ class MLP:
         # Perform forward propagation
         self.forward(x)
 
-        # Compute output layer error (MSE derivative)
-        delta = (
-            (self.a[-1] - y) * self.a[-1] * (1 - self.a[-1])
-        )  # Output layer derivative
+        # Compute gradients for the output layer
+        delta = self.a[-1] - y  # When using cross-entropy + softmax
         gradients_w[-1] = np.dot(self.a[-2].T, delta) / m
         gradients_b[-1] = np.sum(delta, axis=0, keepdims=True) / m
 
