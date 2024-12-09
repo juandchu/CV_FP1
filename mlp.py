@@ -125,3 +125,19 @@ class MLP:
         for i in range(len(self.weights)):
             self.weights[i] -= self.learning_rate * gradients_w[i]
             self.biases[i] -= self.learning_rate * gradients_b[i]
+
+    def evaluate(self, x, y):
+        """
+        Evaluate the trained model on given data.
+
+        Parameters:
+        - x: Input data (numpy array of shape [n_samples, input_size])
+        - y: True labels (numpy array of shape [n_samples], integer labels)
+
+        Returns:
+        - accuracy: the accuracy of the model on the provided dataset
+        """
+        output = self.forward(x)  # forward pass
+        predictions = np.argmax(output, axis=1)
+        accuracy = np.mean(predictions == y)
+        return accuracy
