@@ -39,23 +39,6 @@ def process_image(img):
     return img
 
 
-def one_hot_encoder(label):
-    """
-    Convert an integer label in the range [0, 9] to a one-hot encoded vector.
-
-    Parameters:
-    - label: Integer in the range 0-9.
-
-    Returns:
-    - A one-hot encoded column vector as a numpy array.
-    """
-
-    one_hot_vector = np.zeros(10)  # This creates a 1D array of size 10
-    one_hot_vector[label] = 1  # Set the element at the index 'label' to 1
-
-    return one_hot_vector.reshape(1, -1)  # Reshape to 1 row and 10 columns
-
-
 def mean_squared_error(y_true, y_pred):
     """
     Calculates the Mean Squared Error (MSE) loss.
