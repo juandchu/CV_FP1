@@ -32,9 +32,12 @@ class MLP:
         layer_sizes = [input_size] + hidden_layer_sizes + [output_size]
 
         for i in range(len(layer_sizes) - 1):
-            self.weights.append(
-                np.random.randn(layer_sizes[i], layer_sizes[i + 1]) * 0.01
-            )
+            fan_in = layer_sizes[i]
+            fan_out = layer_sizes[i + 1]
+            # Xavier initialization for weights
+            std_dev = np.sqrt(2 / (fan_in + fan_out))
+            self.weights.append(np.random.randn(fan_in, fan_out) * std_dev)
+            # Initialize biases to zero
             self.biases.append(np.zeros((1, layer_sizes[i + 1])))
 
         # Set activation function and its derivative
@@ -44,10 +47,6 @@ class MLP:
         elif activation_function == "sigmoid":
             self.activation = sigmoid
             self.activation_derivative = sigmoid_derivative
-        else:
-            raise ValueError(
-                "Unsupported activation function. Choose 'relu' or 'sigmoid'."
-            )
 
     def forward(self, x):
         """
@@ -64,17 +63,18 @@ class MLP:
         self.a = []  # Store activations
         self.z = []  # Store linear transformations
 
-        current_activation = x
-        self.a.append(current_activation)  # Input layer activation
+        self.a.append(x)  # Input layer activation
 
-        for i in range(len(self.weights) - 1):  # For all layers except the output layer
-            z = np.dot(current_activation, self.weights[i]) + self.biases[i]
-            current_activation = self.activation(z)
-            self.z.append(z)
-            self.a.append(current_activation)
+        # Iterate over all layers except last one
+        for i in range(len(self.weights) - 1):
+            # Compute the linear transformation (z) for the current layer
+            z = np.dot(x, self.weights[i]) + self.biases[i]  # z = x * W + b
+            x = self.activation(z)  # Apply the activation function
+            self.z.append(z)  # Store the linear transformation
+            self.a.append(x)  # Store the activation
 
         # Output layer with softmax activation
-        z = np.dot(current_activation, self.weights[-1]) + self.biases[-1]
+        z = np.dot(x, self.weights[-1]) + self.biases[-1]
         self.z.append(z)
         output = softmax(z)
         self.a.append(output)
@@ -83,32 +83,45 @@ class MLP:
 
     def back_propagation(self, x, y):
         """
-        Perform backpropagation and compute gradients.
+        Perform backpropagation and compute gradients for weights and biases.
 
         Parameters:
         - x: Input data (numpy array)
+            Shape: (batch_size, input_features)
         - y: True labels (numpy array)
+            Shape: (batch_size, output_classes)
 
         Returns:
-        - Gradients for weights and biases
+        - gradients_w: List of gradients for each weight matrix
+                    Each element has shape corresponding to its weight matrix
+        - gradients_b: List of gradients for each bias vector
+                    Each element has shape corresponding to its bias vector
         """
-        m = x.shape[0]  # Number of samples
+        m = x.shape[0]  # batch_size
+
+        # The variables gradients with zeros
         gradients_w = [np.zeros_like(w) for w in self.weights]
         gradients_b = [np.zeros_like(b) for b in self.biases]
 
         # Perform forward propagation
-        self.forward(x)
+        # self.forward(x)
 
         # Compute gradients for the output layer
         delta = self.a[-1] - y  # When using cross-entropy + softmax
-        gradients_w[-1] = np.dot(self.a[-2].T, delta) / m
-        gradients_b[-1] = np.sum(delta, axis=0, keepdims=True) / m
+        gradients_w[-1] = (
+            np.dot(self.a[-2].T, delta) / m
+        )  # Gradient of weights: (a_prev)^T * delta / m
+        gradients_b[-1] = (
+            np.sum(delta, axis=0, keepdims=True) / m
+        )  # Gradient of biases: sum(delta) / m
 
         # Backpropagate through hidden layers
-        for l in range(len(self.weights) - 2, -1, -1):
+        for l in range(
+            len(self.weights) - 2, -1, -1
+        ):  # Starting from the second last layer down to the first hidden layer
             delta = np.dot(delta, self.weights[l + 1].T) * self.activation_derivative(
                 self.z[l]
-            )
+            )  # delta = (delta_next_layer * W_next_layer^T) * activation_derivative(z_current_layer)
             gradients_w[l] = np.dot(self.a[l].T, delta) / m
             gradients_b[l] = np.sum(delta, axis=0, keepdims=True) / m
 
@@ -116,7 +129,7 @@ class MLP:
 
     def update_weights(self, gradients_w, gradients_b):
         """
-        Update weights and biases using the computed gradients.
+        Update weights and biases using the obtained gradients.
 
         Parameters:
         - gradients_w: Gradients for weights
@@ -138,6 +151,6 @@ class MLP:
         - accuracy: the accuracy of the model on the provided dataset
         """
         output = self.forward(x)  # forward pass
-        predictions = np.argmax(output, axis=1)
-        accuracy = np.mean(predictions == y)
+        predictions = np.argmax(output, axis=1)  # predicted labels
+        accuracy = np.mean(predictions == y)  # compute accuracy
         return accuracy
