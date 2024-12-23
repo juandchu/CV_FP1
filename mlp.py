@@ -154,3 +154,24 @@ class MLP:
         predictions = np.argmax(output, axis=1)  # predicted labels
         accuracy = np.mean(predictions == y)  # compute accuracy
         return accuracy
+
+    def calculate_parameters(self):
+        """
+        Calculate the total number of parameters in the model.
+
+        Returns:
+        - num_params: Total number of parameters in the model
+        """
+        layers = []
+        layers.append(self.input_size)  # append input layers
+        for i in self.hidden_layer_sizes:  # append hidden layers
+            layers.append(i)
+        layers.append(self.output_size)  # append output layers
+
+        total_params = 0
+
+        # Calculate Parameters
+        for i in range(len(layers)):
+            if i == len(layers) - 1:
+                return total_params
+            total_params += (layers[i] * layers[i + 1]) + layers[i + 1]
